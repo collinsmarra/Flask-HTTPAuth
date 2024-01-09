@@ -1,12 +1,13 @@
 import unittest
 import base64
-from flask import Flask
-from flask_httpauth import HTTPBasicAuth
+import quart_flask_patch
+from quart import Quart
+from src.flask_httpauth import HTTPBasicAuth
 
 
 class HTTPAuthTestCase(unittest.TestCase):
     def setUp(self):
-        app = Flask(__name__)
+        app = Quart(__name__)
         app.config['SECRET_KEY'] = 'my secret'
 
         basic_auth = HTTPBasicAuth()
@@ -33,31 +34,31 @@ class HTTPAuthTestCase(unittest.TestCase):
         self.basic_auth = basic_auth
         self.client = app.test_client()
 
-    def test_no_auth(self):
-        response = self.client.get('/')
+    async def test_no_auth(self):
+        response = await self.client.get('/')
         self.assertEqual(response.data.decode('utf-8'), 'index')
 
-    def test_basic_auth_prompt(self):
-        response = self.client.get('/basic')
+    async def test_basic_auth_prompt(self):
+        response = await self.client.get('/basic')
         self.assertEqual(response.status_code, 401)
         self.assertTrue('WWW-Authenticate' in response.headers)
         self.assertEqual(response.headers['WWW-Authenticate'],
                          'Basic realm="Authentication Required"')
 
-    def test_basic_auth_ignore_options(self):
-        response = self.client.options('/basic')
+    async def test_basic_auth_ignore_options(self):
+        response = await self.client.options('/basic')
         self.assertEqual(response.status_code, 200)
         self.assertTrue('WWW-Authenticate' not in response.headers)
 
-    def test_basic_auth_login_valid(self):
+    async def test_basic_auth_login_valid(self):
         creds = base64.b64encode(b'john:hello').decode('utf-8')
-        response = self.client.get(
+        response = await self.client.get(
             '/basic', headers={'Authorization': 'Basic ' + creds})
         self.assertEqual(response.data.decode('utf-8'), 'basic_auth:john')
 
-    def test_basic_auth_login_invalid(self):
+    async def test_basic_auth_login_invalid(self):
         creds = base64.b64encode(b'john:bye').decode('utf-8')
-        response = self.client.get(
+        response = await self.client.get(
             '/basic', headers={'Authorization': 'Basic ' + creds})
         self.assertEqual(response.status_code, 401)
         self.assertTrue('WWW-Authenticate' in response.headers)

@@ -1,47 +1,24 @@
-[project]
-name = "Flask-HTTPAuth"
-version = "4.8.1.dev0"
-authors = [
-    { name = "Miguel Grinberg", email = "miguel.grinberg@gmail.com" },
-]
-description = "HTTP authentication for Flask routes"
-classifiers = [
-    "Environment :: Web Environment",
-    "Intended Audience :: Developers",
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: Implementation :: MicroPython",
-    "License :: OSI Approved :: MIT License",
-    "Operating System :: OS Independent",
-]
-dependencies = [
-    "flask",
-]
+[tool.poetry]
+name = "quart-httpauth"
+version = "0.1.0"
+description = "QaurtHTTPAuth from FlaskHTTPAuth"
+authors = ["Your Name <you@example.com>"]
+readme = "README.md"
 
-[project.readme]
-file = "README.md"
-content-type = "text/markdown"
+[tool.poetry.dependencies]
+python = "^3.11"
+Quart = "^0.19.4"
+quart-flask-patch = "^0.3.0"
 
-[project.urls]
-Homepage = "https://github.com/miguelgrinberg/flask-httpauth"
-"Bug Tracker" = "https://github.com/miguelgrinberg/flask-httpauth/issues"
+[tool.poetry.group.dev.dependencies]
+black = "^23.12.1"
+pytest = "^7.4.4"
+tox = "^4.11.4"
 
-[project.optional-dependencies]
-docs = [
-    "sphinx",
-]
-
-[tool.setuptools]
-zip-safe = false
-include-package-data = true
-py-modules = [
-    "flask_httpauth",
-]
-
-[tool.setuptools.package-dir]
-"" = "src"
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+filterwarnings = ["ignore::DeprecationWarning", "ignore::PendingDeprecationWarning", "ignore::RuntimeWarning"]
 
 [build-system]
-requires = [
-    "setuptools>=61.2",
-]
-build-backend = "setuptools.build_meta"
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

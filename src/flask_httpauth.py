@@ -12,7 +12,7 @@ from base64 import b64decode
 from functools import wraps
 from hashlib import md5
 from random import Random, SystemRandom
-from flask import request, make_response, session, g, Response, current_app
+from quart import request, make_response, session, g, Response, current_app
 from werkzeug.datastructures import Authorization
 
 

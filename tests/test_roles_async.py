@@ -1,15 +1,16 @@
 import sys
 import unittest
 import base64
-from flask import Flask, g
-from flask_httpauth import HTTPBasicAuth
 import pytest
 
+from quart import Quart, g
+import quart_flask_patch
+from src.flask_httpauth import HTTPBasicAuth
 
 @pytest.mark.skipif(sys.version_info < (3, 7), reason='requires python3.7')
 class HTTPAuthTestCase(unittest.TestCase):
     def setUp(self):
-        app = Flask(__name__)
+        app = Quart(__name__)
         app.config['SECRET_KEY'] = 'my secret'
 
         roles_auth = HTTPBasicAuth()
@@ -70,66 +71,66 @@ class HTTPAuthTestCase(unittest.TestCase):
         self.roles_auth = roles_auth
         self.client = app.test_client()
 
-    def test_verify_roles_valid_normal_1(self):
+    async def test_verify_roles_valid_normal_1(self):
         creds = base64.b64encode(b'susan:bye').decode('utf-8')
-        response = self.client.get(
+        response = await self.client.get(
             '/normal', headers={'Authorization': 'Basic ' + creds})
         self.assertEqual(response.data, b'normal:susan')
 
-    def test_verify_roles_valid_normal_2(self):
+    async def test_verify_roles_valid_normal_2(self):
         creds = base64.b64encode(b'john:hello').decode('utf-8')
-        response = self.client.get(
+        response = await self.client.get(
             '/normal', headers={'Authorization': 'Basic ' + creds})
         self.assertEqual(response.data, b'normal:john')
 
-    def test_verify_auth_login_valid_special(self):
+    async def test_verify_auth_login_valid_special(self):
         creds = base64.b64encode(b'susan:bye').decode('utf-8')
-        response = self.client.get(
+        response = await self.client.get(
             '/special', headers={'Authorization': 'Basic ' + creds})
         self.assertEqual(response.data, b'special:susan')
 
-    def test_verify_auth_login_invalid_special_1(self):
+    async def test_verify_auth_login_invalid_special_1(self):
         creds = base64.b64encode(b'john:hello').decode('utf-8')
-        response = self.client.get(
+        response = await self.client.get(
             '/special', headers={'Authorization': 'Basic ' + creds})
         self.assertEqual(response.status_code, 403)
         self.assertTrue('WWW-Authenticate' in response.headers)
 
-    def test_verify_auth_login_invalid_special_2(self):
+    async def test_verify_auth_login_invalid_special_2(self):
         creds = base64.b64encode(b'cindy:byebye').decode('utf-8')
-        response = self.client.get(
+        response = await self.client.get(
             '/special', headers={'Authorization': 'Basic ' + creds})
         self.assertEqual(response.status_code, 403)
         self.assertTrue('WWW-Authenticate' in response.headers)
 
-    def test_verify_auth_login_valid_normal_or_special_1(self):
+    async def test_verify_auth_login_valid_normal_or_special_1(self):
         creds = base64.b64encode(b'susan:bye').decode('utf-8')
-        response = self.client.get(
+        response = await self.client.get(
             '/normal-or-special', headers={'Authorization': 'Basic ' + creds})
         self.assertEqual(response.data, b'normal_or_special:susan')
 
-    def test_verify_auth_login_valid_normal_or_special_2(self):
+    async def test_verify_auth_login_valid_normal_or_special_2(self):
         creds = base64.b64encode(b'john:hello').decode('utf-8')
-        response = self.client.get(
+        response = await self.client.get(
             '/normal-or-special', headers={'Authorization': 'Basic ' + creds})
         self.assertEqual(response.data, b'normal_or_special:john')
 
-    def test_verify_auth_login_valid_normal_and_special_1(self):
+    async def test_verify_auth_login_valid_normal_and_special_1(self):
         creds = base64.b64encode(b'susan:bye').decode('utf-8')
-        response = self.client.get(
+        response = await self.client.get(
             '/normal-and-special', headers={'Authorization': 'Basic ' + creds})
         self.assertEqual(response.data, b'normal_and_special:susan')
 
-    def test_verify_auth_login_valid_normal_and_special_2(self):
+    async def test_verify_auth_login_valid_normal_and_special_2(self):
         creds = base64.b64encode(b'john:hello').decode('utf-8')
-        response = self.client.get(
+        response = await self.client.get(
             '/normal-and-special', headers={'Authorization': 'Basic ' + creds})
         self.assertEqual(response.status_code, 403)
         self.assertTrue('WWW-Authenticate' in response.headers)
 
-    def test_verify_auth_login_invalid_password(self):
+    async def test_verify_auth_login_invalid_password(self):
         creds = base64.b64encode(b'john:bye').decode('utf-8')
-        response = self.client.get(
+        response = await self.client.get(
             '/normal', headers={'Authorization': 'Basic ' + creds})
         self.assertEqual(response.status_code, 403)
         self.assertTrue('WWW-Authenticate' in response.headers)

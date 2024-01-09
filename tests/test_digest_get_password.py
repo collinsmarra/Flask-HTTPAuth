@@ -2,10 +2,11 @@ import unittest
 import re
 import pytest
 from hashlib import md5 as basic_md5
-from flask import Flask
-from flask_httpauth import HTTPDigestAuth
-from werkzeug.http import parse_dict_header
 
+from quart import Quart
+import quart_flask_patch
+from src.flask_httpauth import HTTPDigestAuth
+from werkzeug.http import parse_dict_header
 
 def md5(str):
     if type(str).__name__ == 'str':
@@ -19,14 +20,14 @@ def get_ha1(user, pw, realm):
 
 
 class HTTPAuthTestCase(unittest.TestCase):
-    def setUp(self):
-        app = Flask(__name__)
+    async def setUp(self):
+        app = Quart(__name__)
         app.config['SECRET_KEY'] = 'my secret'
 
         digest_auth = HTTPDigestAuth()
 
         @digest_auth.get_password
-        def get_digest_password_2(username):
+        async def get_digest_password_2(username):
             if username == 'susan':
                 return 'hello'
             elif username == 'john':
@@ -35,12 +36,12 @@ class HTTPAuthTestCase(unittest.TestCase):
                 return None
 
         @app.route('/')
-        def index():
+        async def index():
             return 'index'
 
         @app.route('/digest')
         @digest_auth.login_required
-        def digest_auth_route():
+        async def digest_auth_route():
             return 'digest_auth:' + digest_auth.username()
 
         self.app = app
@@ -66,8 +67,8 @@ class HTTPAuthTestCase(unittest.TestCase):
         with pytest.raises(ValueError):
             HTTPDigestAuth(algorithm='foo')
 
-    def test_digest_auth_prompt(self):
-        response = self.client.get('/digest')
+    async def test_digest_auth_prompt(self):
+        response = await self.client.get('/digest')
         self.assertEqual(response.status_code, 401)
         self.assertTrue('WWW-Authenticate' in response.headers)
         self.assertTrue(re.match(r'^Digest realm="Authentication Required",'
@@ -75,13 +76,13 @@ class HTTPAuthTestCase(unittest.TestCase):
                                  r'algorithm="MD5",qop="auth"$',
                                  response.headers['WWW-Authenticate']))
 
-    def test_digest_auth_ignore_options(self):
-        response = self.client.options('/digest')
+    async def test_digest_auth_ignore_options(self):
+        response = await self.client.options('/digest')
         self.assertEqual(response.status_code, 200)
         self.assertTrue('WWW-Authenticate' not in response.headers)
 
-    def test_digest_auth_login_valid(self):
-        response = self.client.get('/digest')
+    async def test_digest_auth_login_valid(self):
+        response = await self.client.get('/digest')
         self.assertTrue(response.status_code == 401)
         header = response.headers.get('WWW-Authenticate')
         auth_type, auth_info = header.split(None, 1)
@@ -105,10 +106,10 @@ class HTTPAuthTestCase(unittest.TestCase):
                                                        d['opaque'])})
         self.assertEqual(response.data, b'digest_auth:john')
 
-    def test_digest_auth_md5_sess_login_valid(self):
+    async def test_digest_auth_md5_sess_login_valid(self):
         self.digest_auth.algorithm = 'MD5-Sess'
 
-        response = self.client.get('/digest')
+        response = await self.client.get('/digest')
         self.assertTrue(response.status_code == 401)
         header = response.headers.get('WWW-Authenticate')
         auth_type, auth_info = header.split(None, 1)
@@ -133,8 +134,8 @@ class HTTPAuthTestCase(unittest.TestCase):
                                                        d['opaque'])})
         self.assertEqual(response.data, b'digest_auth:john')
 
-    def test_digest_auth_login_bad_realm(self):
-        response = self.client.get('/digest')
+    async def test_digest_auth_login_bad_realm(self):
+        response = await self.client.get('/digest')
         self.assertTrue(response.status_code == 401)
         header = response.headers.get('WWW-Authenticate')
         auth_type, auth_info = header.split(None, 1)
@@ -163,10 +164,10 @@ class HTTPAuthTestCase(unittest.TestCase):
                                  r'algorithm="MD5",qop="auth"$',
                                  response.headers['WWW-Authenticate']))
 
-    def test_digest_auth_login_invalid2(self):
-        response = self.client.get('/digest')
+    async def test_digest_auth_login_invalid2(self):
+        response = await self.client.get('/digest')
         self.assertEqual(response.status_code, 401)
-        header = response.headers.get('WWW-Authenticate')
+        header = await response.headers.get('WWW-Authenticate')
         auth_type, auth_info = header.split(None, 1)
         d = parse_dict_header(auth_info)
 
@@ -193,12 +194,12 @@ class HTTPAuthTestCase(unittest.TestCase):
                                  r'algorithm="MD5",qop="auth"$',
                                  response.headers['WWW-Authenticate']))
 
-    def test_digest_generate_ha1(self):
-        ha1 = self.digest_auth.generate_ha1('pawel', 'test')
+    async def test_digest_generate_ha1(self):
+        ha1 = await self.digest_auth.generate_ha1('pawel', 'test')
         ha1_expected = get_ha1('pawel', 'test', self.digest_auth.realm)
         self.assertEqual(ha1, ha1_expected)
 
-    def test_digest_custom_nonce_checker(self):
+    async def test_digest_custom_nonce_checker(self):
         @self.digest_auth.generate_nonce
         def noncemaker():
             return 'not a good nonce'
@@ -221,7 +222,7 @@ class HTTPAuthTestCase(unittest.TestCase):
             verify_opaque_called.append(provided_opaque)
             return True
 
-        response = self.client.get('/digest')
+        response = await self.client.get('/digest')
         self.assertEqual(response.status_code, 401)
         header = response.headers.get('WWW-Authenticate')
         auth_type, auth_info = header.split(None, 1)
@@ -237,7 +238,7 @@ class HTTPAuthTestCase(unittest.TestCase):
         a3 = ha1 + ':' + d['nonce'] + ':00000001:foobar:auth:' + ha2
         auth_response = md5(a3).hexdigest()
 
-        response = self.client.get(
+        response = await self.client.get(
             '/digest', headers={
                 'Authorization': 'Digest username="john",realm="{0}",'
                                  'nonce="{1}",uri="/digest",qop=auth,'
